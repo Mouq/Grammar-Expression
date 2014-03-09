@@ -7,11 +7,11 @@ grammar Arithmetic does Grammar::Expression {
     # self.new-prec($str) makes $str a new
     # precedence level and by default the
     # loosest level.
-    $.new-prec('sign', :assoc<unary>); #?
+    $.new-prec('sign', :uassoc<left>);
     $.new-prec('exponential', :assoc<right>);
     $.new-prec('multiplicative', :assoc<left>);
     $.new-prec('additive', :assoc<left>);
-    $.new-prec('mantissa', :tightest, :assoc<unary>); #?
+    $.new-prec('mantissa', :tightest);
 
     # <EXPR> operates as:
     # [ <prefixish>* <termish> <postfixish>* ] +% <infixish>

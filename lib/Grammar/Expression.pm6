@@ -9,7 +9,9 @@ role Grammar::Expression is Grammar {
     token prefixish  { <prefix>  }
     token postfixish { <postfix> }
 
-    method EXPR($prec) { ... }
+    method new-prec(|p) { $.precedence-table(|p) }
+
+    method EXPR(Str $prec?) { ... }
 
     method parse($target, :$actions = Mu, |p) {
         if $actions.^name ne 'Mu' and $actions !~~ Grammar::Expression::Actions {
