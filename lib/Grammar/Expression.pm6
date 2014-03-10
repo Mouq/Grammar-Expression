@@ -31,6 +31,7 @@ role Grammar::Expression is Grammar {
         my $termish = 'termish';
 
         my &reduce := -> {
+            note("entering reduce");
             my $op = pop @opstack;
             given $op<O><assoc> {
                 when 'unary' {
@@ -53,20 +54,25 @@ role Grammar::Expression is Grammar {
         my $here = self;
         my $last-term = False;
         loop {
+            note("In loop, at $here.pos()");
             my $oldpos = $here.pos;
             $here = $here.'!cursor_start_cur'();
-            my @t = $here."$termish"();
+            my $termcur = $here."$termish"();
 
-            # if not @t or not $here = @t[0] or
+            note($here.pos);
+            return $termcur if $termcur.pos < 0;
+            # if $termcur.pos < 0 or not $termcur or
             #     ($here.pos == $oldpos and $termish eq 'termish')
             # {
-            #     #die("Bogus term") if @opstack > 1;
-            #     return ();
+            #     die("Bogus term") if @opstack > 1;
+            #     return $here;
             # }
+            my $term-match = $here.MATCH();
+            note($term-match);
             $termish = 'termish';
             # Interleave any prefix/postfix we might have found
-            my @pre  = ($here<prefixish>:delete  // []).list;
-            my @post = ($here<postfixish>:delete // []).list.reverse;
+            my @pre  = ($term-match<prefixish>:delete  // []).list;
+            my @post = ($term-match<postfixish>:delete // []).list.reverse;
             while @pre and @post {
                 my $postO = @post[0]<O>;
                 my $preO  = @pre[0]<O>;
@@ -88,7 +94,8 @@ role Grammar::Expression is Grammar {
             }
             push @opstack, |@pre, |@post;
 
-            push @termstack, $here<termish>;
+            note("Moving on to infixes");
+            push @termstack, $term-match<termish1>;
             # Leaving the following commented until
             # I understand it:
             # @termstack[*-1]<postfixish>:delete
@@ -139,18 +146,22 @@ role Grammar::Expression is Grammar {
                 push @opstack, $infix; # The Shift
                 last;
             }
+            last if $last-term;
         }
+        note('Done with TERM');
         reduce while @opstack > 1;
-        if @termstack {
-            @termstack[0].from = self.pos;
-            @termstack[0].pos = $here.pos;
-        }
-        my $pos = $here.pos;
-        $here = self.'!cursor_start_cur'();
-        $here.'!cursor_pass'($pos);
-        $here.pos = $pos;
-        $here.match = @termstack.pop;
-        $here.'!reduce'('EXPR');
+        note('Done reducing');
+        #if @termstack {
+            #@termstack[0].from = self.pos;
+            #@termstack[0].pos = $here.pos;
+        #}
+        #my $pos = $here.pos;
+        #$here = self.'!cursor_start_cur'();
+        #$here.'!cursor_pass'($pos);
+        #nqp::bindattr_i($here, Cursor, '$!pos', $pos);
+        #$here.match = @termstack.pop;
+        #$here.'!reduce'('EXPR');
+        $*ACTIONS.?EXPR(@termstack[0]);
         $here;
     }
 }
