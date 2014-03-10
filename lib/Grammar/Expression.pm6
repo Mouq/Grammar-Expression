@@ -47,7 +47,108 @@ role Grammar::Expression is Grammar {
             $*ACTIONS.?EXPR($op);
         }
 
-        ...;
+        my $here = self;
+        my $last-term = False;
+        loop {
+            my $oldpos = $here.pos;
+            $here = $here.'!cursor_start_cur'();
+            my @t = $here."$termish";
+
+            if not @t or not $here = @t[0] or
+                ($here.pos == $oldpos and $termish eq 'termish')
+            {
+                #die("Bogus term") if @opstack > 1;
+                return ();
+            }
+            $termish = 'termish';
+            # Interleave any prefix/postfix we might have found
+            my @pre  = ($here<prefixish>:delete  // []).list;
+            my @post = ($here<postfixish>:delete // []).list.reverse;
+            while @pre and @post {
+                my $postO = @post[0]<O>;
+                my $preO  = @pre[0]<O>;
+                if $postO<prec> lt $preO<prec> {
+                    push @opstack, shift @post;
+                }
+                elsif $postO<prec> gt $preO<prec> {
+                    push @opstack, shift @pre;
+                }
+                elsif $postO<uassoc> eq 'left' {
+                    push @opstack, shift @post;
+                }
+                elsif $postO<uassoc> eq 'right' {
+                    push @opstack, shift @pre;
+                }
+                else {
+                    die "{@pre[0]<sym>} and {@post[0]<sym>} are not associative";
+                }
+            }
+            push @opstack, |@pre, |@post;
+
+            push @termstack, $here<termish>;
+            # Leaving the following commented until
+            # I understand it:
+            # @termstack[*-1]<postfixish>:delete
+
+            # last if $no-infix # This should be more generalized
+            loop {
+                $oldpos = $here.pos;
+                $here = $here.'!cursor_start_cur'().ws();
+                my @infix = $here.'!cursor_start_cur'().infixish();
+                $last-term = True and last unless @infix;
+                my $infix = @infix[0]
+                $last-term = True and last unless $infix.pos > $oldpos;
+                $infix .= MATCH;
+
+                my $inO = $infix<O>;
+                my Str $inprec = $inO<prec>;
+                if not defined $inprec {
+                    die 'Infix has no precedence information'; # Fix me
+                }
+
+                $last-term = True and last if $inprec le $preclim;
+
+                # Does new infix (or terminator) force any reductions?
+                while @opstack[*-1]<O><prec> gt $inprec {
+                    reduce;
+                }
+
+                last if $inprec lt $.prec-table.loosest;
+
+                if @opstack[*-1]<O><prec> eq $inprec {
+                    my $assoc = 1;
+                    given $inO<assoc> {
+                        when 'non'   { $assoc = 0; }
+                        when 'left'  { reduce; }
+                        when 'right' { }
+                        when 'unary' { }
+                        when 'list'  { ... }
+                        default {
+                            die "Unknown associativity $_ for $infix<sym>";
+                        }
+                    }
+                    if not $assoc {
+                        die "{@opstack[*-1]<sym>} and $infix are non-associative and require parens";
+                    }
+                }
+
+                $termish = $inO<nextterm> if $inO<nextterm>;
+                push @opstack, $infix; # The Shift
+                last;
+            }
+        }
+        reduce while @opstack > 1;
+        if @termstack {
+            @termstack[0].from = self.pos;
+            @termsatck[0].pos = $here.pos;
+        }
+        my $pos = $here.pos;
+        $here = self.'!cursor_start_cur'();
+        $here.'!cursor_pass'($pos);
+        $here.pos = $pos;
+        $here.match = @termstack.pop;
+        $here.'!reduce'('EXPR');
+        $here;
     }
 
     method parse($target, :$actions = Mu, |p) {
