@@ -3,7 +3,7 @@ use Grammar::Expression::Actions;
 
 role Grammar::Expression is Grammar {
     # Wants to be %.prec-table what `is` is supported
-    has Grammar::Expression::Table $.prec-table .= new;
+    has $.prec-table = Grammar::Expression::Table.new;
     # Default -ish-es
     token termish    { <term>    }
     token infixish   { <infix>   }
@@ -15,13 +15,13 @@ role Grammar::Expression is Grammar {
     # XXX $save?
     method O($prec, *%extra) {
         my $cur := self.'!cursor_start_cur'();
-        $cur.'!cursor_pass'($cur.from));
+        $cur.'!cursor_pass'($cur.from);
         $cur.match = ($.prec-table{$prec}, %extra).hash;
         $cur;
     }
 
     method EXPR($preclvl?) {
-        my $preclim = $.prec-table{$preclvl}<prec> if $preclvl
+        my $preclim = $.prec-table{$preclvl}<prec> if $preclvl;
         $preclim //= $.prec-table.loosest;
         my @termstack;
         my @opstack;
@@ -52,7 +52,7 @@ role Grammar::Expression is Grammar {
         loop {
             my $oldpos = $here.pos;
             $here = $here.'!cursor_start_cur'();
-            my @t = $here."$termish";
+            my @t = $here."$termish"();
 
             if not @t or not $here = @t[0] or
                 ($here.pos == $oldpos and $termish eq 'termish')
@@ -96,7 +96,7 @@ role Grammar::Expression is Grammar {
                 $here = $here.'!cursor_start_cur'().ws();
                 my @infix = $here.'!cursor_start_cur'().infixish();
                 $last-term = True and last unless @infix;
-                my $infix = @infix[0]
+                my $infix = @infix[0];
                 $last-term = True and last unless $infix.pos > $oldpos;
                 $infix .= MATCH;
 
@@ -140,7 +140,7 @@ role Grammar::Expression is Grammar {
         reduce while @opstack > 1;
         if @termstack {
             @termstack[0].from = self.pos;
-            @termsatck[0].pos = $here.pos;
+            @termstack[0].pos = $here.pos;
         }
         my $pos = $here.pos;
         $here = self.'!cursor_start_cur'();
@@ -157,7 +157,7 @@ role Grammar::Expression is Grammar {
             # (needs to have $actions second so
             # G::P::A doesn't override methods)
             $actions = Grammar::Expression::Actions
-                       but role :: is $actions {}
+                       but role :: is ::($actions) {}
         }
         callsame(:$actions, $target, |p);
     }
@@ -165,7 +165,7 @@ role Grammar::Expression is Grammar {
         if $actions.^name ne 'Mu' and $actions !~~ Grammar::Expression::Actions {
             # XXX Same as parse
             $actions = Grammar::Expression::Actions
-                       but role :: is $actions {}
+                       but role :: is ::($actions) {}
         }
         callsame(:$actions, $target, |p);
     }

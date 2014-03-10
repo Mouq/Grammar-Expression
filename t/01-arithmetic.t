@@ -1,5 +1,5 @@
 use Test;
-use Grammar::Precedence;
+use Grammar::Expression;
 
 grammar Arithmetic does Grammar::Expression {
     token TOP { <EXPR> }
