@@ -150,23 +150,4 @@ role Grammar::Expression is Grammar {
         $here.'!reduce'('EXPR');
         $here;
     }
-
-    method parse($target, :$actions = Mu, |p) {
-        if $actions.^name ne 'Mu' and $actions !~~ Grammar::Expression::Actions {
-            # XXX Less hacky way to do this?
-            # (needs to have $actions second so
-            # G::P::A doesn't override methods)
-            $actions = Grammar::Expression::Actions
-                       but role :: is ::($actions) {}
-        }
-        callsame(:$actions, $target, |p);
-    }
-    method subparse($target, :$actions = Mu, |p) {
-        if $actions.^name ne 'Mu' and $actions !~~ Grammar::Expression::Actions {
-            # XXX Same as parse
-            $actions = Grammar::Expression::Actions
-                       but role :: is ::($actions) {}
-        }
-        callsame(:$actions, $target, |p);
-    }
 }

@@ -37,7 +37,7 @@ grammar Arithmetic does Grammar::Expression {
 
     token postfixish { <[eE]> <EXPR('sign')> <O('mantissa')> }
 }
-class ArithActions {
+class ArithActions does Grammar::Expression::Actions {
     method TOP ($/) { make $<EXPR>.ast }
     method termish ($/) {
         make $<digit>
