@@ -1,4 +1,4 @@
-class Grammar::Expression::Actions {
+role Grammar::Expression::Actions {
     method EXPR ($/) {
         my &reduce = $<OPER>.ast;
         make reduce |$/.list».ast;

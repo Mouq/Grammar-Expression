@@ -3,14 +3,17 @@ use Grammar::Expression::Actions;
 
 role Grammar::Expression is Grammar {
     # Wants to be %.prec-table what `is` is supported
-    has $.prec-table = Grammar::Expression::Table.new;
+    has $!prec-table;
+    method prec-table {
+        $!prec-table //= Grammar::Expression::Table.new;
+    }
     # Default -ish-es
     token termish    { <term>    }
     token infixish   { <infix>   }
     token prefixish  { <prefix>  }
     token postfixish { <postfix> }
 
-    method new-prec(|p) { $.prec-table(|p) }
+    method new-prec(|p) { $.prec-table.new-prec(|p) }
 
     # XXX $save?
     method O($prec, *%extra) {
@@ -54,12 +57,12 @@ role Grammar::Expression is Grammar {
             $here = $here.'!cursor_start_cur'();
             my @t = $here."$termish"();
 
-            if not @t or not $here = @t[0] or
-                ($here.pos == $oldpos and $termish eq 'termish')
-            {
-                #die("Bogus term") if @opstack > 1;
-                return ();
-            }
+            # if not @t or not $here = @t[0] or
+            #     ($here.pos == $oldpos and $termish eq 'termish')
+            # {
+            #     #die("Bogus term") if @opstack > 1;
+            #     return ();
+            # }
             $termish = 'termish';
             # Interleave any prefix/postfix we might have found
             my @pre  = ($here<prefixish>:delete  // []).list;

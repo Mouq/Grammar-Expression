@@ -2,16 +2,19 @@ use Test;
 use Grammar::Expression;
 
 grammar Arithmetic does Grammar::Expression {
-    token TOP { <EXPR> }
-
-    # self.new-prec($str) makes $str a new
-    # precedence level and by default the
-    # loosest level.
-    $.new-prec('sign', :uassoc<left>);
-    $.new-prec('exponential', :assoc<right>);
-    $.new-prec('multiplicative', :assoc<left>);
-    $.new-prec('additive', :assoc<left>);
-    $.new-prec('mantissa', :tightest);
+    token TOP {
+        {
+            # self.new-prec($str) makes $str a new
+            # precedence level and by default the
+            # loosest level.
+            $.new-prec('sign', :uassoc<left>);
+            $.new-prec('exponential', :assoc<right>);
+            $.new-prec('multiplicative', :assoc<left>);
+            $.new-prec('additive', :assoc<left>);
+            $.new-prec('mantissa', :tightest);
+        }
+        <EXPR>
+    }
 
     # <EXPR> operates as:
     # [ <prefixish>* <termish> <postfixish>* ] +% <infixish>
