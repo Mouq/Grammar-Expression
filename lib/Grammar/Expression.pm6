@@ -20,7 +20,7 @@ role Grammar::Expression is Grammar {
         my $cur := self.'!cursor_start_cur'();
         $cur.'!cursor_pass'($cur.from);
         $cur.match = ($.prec-table{$prec}, %extra).hash;
-        $cur;
+        export-cursor $cur;
     }
 
     method EXPR($preclvl?) {
@@ -31,12 +31,13 @@ role Grammar::Expression is Grammar {
         my $termish = 'termish';
 
         my &reduce := -> {
-            note("entering reduce");
+            note "entering reduce with @termstack @termstack[]";
             my $op = pop @opstack;
             given $op<O><assoc> {
                 when 'unary' {
                     my $arg = pop @termstack;
                     $op[0]  = $arg;
+                    $op<OPER> = $op;
                     #$key    = $arg.from < $op.from
                     #        ?? 'postfixish'
                     #        !! 'prefixish';
@@ -56,11 +57,12 @@ role Grammar::Expression is Grammar {
         loop {
             note("In loop, at $here.pos()");
             my $oldpos = $here.pos;
-            $here = $here.'!cursor_start_cur'();
+            $here = $here."!cursor_init"($here.target,:p($here.pos));
             my $termcur = $here."$termish"();
 
             note($here.pos);
-            return $termcur if $termcur.pos < 0;
+note $termcur.pos;
+            return export-cursor $termcur if $termcur.pos < 0;
             # if $termcur.pos < 0 or not $termcur or
             #     ($here.pos == $oldpos and $termish eq 'termish')
             # {
@@ -103,8 +105,9 @@ role Grammar::Expression is Grammar {
             # last if $no-infix # This should be more generalized
             loop {
                 $oldpos = $here.pos;
-                $here = $here.'!cursor_start_cur'().ws();
-                my @infix = $here.'!cursor_start_cur'().infixish();
+                #$here = $here.'!cursor_start_cur'().ws();
+                $here = $here.ws;
+                my @infix = $here.infixish;#$here.'!cursor_start_cur'().infixish();
                 $last-term = True and last unless @infix;
                 my $infix = @infix[0];
                 $last-term = True and last unless $infix.pos > $oldpos;
@@ -162,6 +165,8 @@ role Grammar::Expression is Grammar {
         #$here.match = @termstack.pop;
         #$here.'!reduce'('EXPR');
         $*ACTIONS.?EXPR(@termstack[0]);
-        $here;
+        $here."!cursor_init"($here.target,:p($here.pos));
     }
 }
+
+sub export-cursor (Cursor $c, :$p = 0) { $c."!cursor_init"($c.target,:p($c.pos+$p)) }

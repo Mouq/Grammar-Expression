@@ -20,8 +20,8 @@ grammar Arithmetic does Grammar::Expression {
     # [ <prefixish>* <termish> <postfixish>* ] +% <infixish>
     # --> Or should this be editable?
     #     (in this case »… <termish> <postfixish>? ] …«)
-    token termish { <prefixish>* <termish1> <postfixish>? }
-    rule termish1 { <digit> | \( ~ \) <EXPR> }
+    token termish { <prefixish>* <term> {note 'invoked and matched'} <postfixish>? }
+    rule term { <digit> | \( ~ \) <EXPR> }
     token digit { \d+ [\. \d+]? }
 
     token infixish { <infix> }
@@ -43,7 +43,7 @@ grammar Arithmetic does Grammar::Expression {
 }
 class ArithActions does Grammar::Expression::Actions {
     method TOP ($/) { make $<EXPR>.ast }
-    method termish ($/) {
+    method term ($/) {
         make $<digit>
           ?? +$<digit>.Str
           !! $<EXPR>.ast
@@ -62,7 +62,7 @@ class ArithActions does Grammar::Expression::Actions {
     method postfixish ($/) { make { $^a * 10 ** $<EXPR>.ast } }
 }
 
-my &arith = { Arithmetic.parse(:actions(ArithActions), $^str).ast };
+my &arith = { Arithmetic.parse(:actions(ArithActions), $^str).?ast };
 is arith('3 + 4'), 7;
 is arith('3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3'), 3 + 4 * 2 / (1 - 5) ** 2 ** 3;
 is arith('3e5'), 300000;
